@@ -5,7 +5,7 @@ from mininet.log import setLogLevel, info
 
 
 class LinuxRouter(Node):
-    """Simple router node that turns on IP forwarding while running."""
+  # Simple router node that turns on IP forwarding while running
     def config(self, **params):
         super().config(**params)
         self.cmd('sysctl -w net.ipv4.ip_forward=1')
@@ -16,7 +16,7 @@ class LinuxRouter(Node):
 
 
 def disable_rpf(host):
-    """Turn off reverse-path filtering so the router can handle asymmetric routes."""
+    # Turn off reverse-path filtering so the router can handle asymmetric routes
     for iface in host.cmd('ls /proc/sys/net/ipv4/conf').split():
         if iface != 'lo':
             host.cmd(f'sysctl -w net.ipv4.conf.{iface}.rp_filter=0')
