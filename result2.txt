@@ -1,0 +1,98 @@
+Experiment 2 Results
+====================
+
+Part 1: Initial Ping Tests (Before Flow Rules)
+-----------------------------------------------
+
+Test 1: h1 to h3
+Command: mininet> h1 ping -c 1 h3
+Result:
+PING 10.0.0.3 (10.0.0.3) 56(84) bytes of data.
+64 bytes from 10.0.0.3: icmp_seq=1 ttl=64 time=6.37 ms
+
+--- 10.0.0.3 ping statistics ---
+1 packets transmitted, 1 received, 0% packet loss, time 0ms
+rtt min/avg/max/mdev = 6.369/6.369/6.369/0.000 ms
+
+Test 2: h2 to h3
+Command: mininet> h2 ping -c 1 h3
+Result:
+PING 10.0.0.3 (10.0.0.3) 56(84) bytes of data.
+64 bytes from 10.0.0.3: icmp_seq=1 ttl=64 time=2.48 ms
+
+--- 10.0.0.3 ping statistics ---
+1 packets transmitted, 1 received, 0% packet loss, time 0ms
+rtt min/avg/max/mdev = 2.480/2.480/2.480/0.000 ms
+
+
+Part 2: OpenFlow Port and Flow Table Inspection
+------------------------------------------------
+
+Check port state of s1:
+Command: $ sudo ovs-ofctl show s1
+Result:
+OFPT_FEATURES_REPLY (xid=0x2): dpid:0000000000000001
+n_tables:254, n_buffers:0
+capabilities: FLOW_STATS TABLE_STATS PORT_STATS QUEUE_STATS ARP_MATCH_IP
+actions: output enqueue set_vlan_vid set_vlan_pcp strip_vlan mod_dl_src mod_dl_dst mod_nw_src mod_nw_dst mod_nw_tos mod_tp_src mod_tp_dst
+ 1(s1-eth1): addr:a2:96:ca:50:53:04
+     config:     0
+     state:      0
+     current:    10GB-FD COPPER
+     speed: 10000 Mbps now, 0 Mbps max
+ 2(s1-eth2): addr:02:db:0b:58:63:54
+     config:     0
+     state:      0
+     current:    10GB-FD COPPER
+     speed: 10000 Mbps now, 0 Mbps max
+ 3(s1-eth3): addr:0a:5f:23:f7:c3:93
+     config:     0
+     state:      0
+     current:    10GB-FD COPPER
+     speed: 10000 Mbps now, 0 Mbps max
+ LOCAL(s1): addr:a6:6c:11:03:ff:45
+     config:     PORT_DOWN
+     state:      LINK_DOWN
+     speed: 0 Mbps now, 0 Mbps max
+OFPT_GET_CONFIG_REPLY (xid=0x4): frags=normal miss_send_len=0
+
+Check flow table of s1 (should be empty initially):
+Command: $ sudo ovs-ofctl dump-flows s1
+Result:
+Empty
+
+
+Part 3: Adding Flow Rules
+--------------------------
+
+Flow Rule Commands:
+-------------------
+# Drop all flows from port s1-eth2 (connected to h2)
+$ sudo ovs-ofctl add-flow s1 in_port=2,actions=drop
+
+# Forward all flows from port s1-eth1 (connected to h1) to s1-eth3 (connected to s2)
+$ sudo ovs-ofctl add-flow s1 in_port=1,actions=output:3
+
+
+Part 4: Ping Tests After Flow Rules
+------------------------------------
+
+Test 1: h1 to h3 (should work - forwarded through s1-eth3)
+Command: mininet> h1 ping -c 1 h3
+Result:
+PING 10.0.0.3 (10.0.0.3) 56(84) bytes of data.
+64 bytes from 10.0.0.3: icmp_seq=1 ttl=64 time=1.67 ms
+
+--- 10.0.0.3 ping statistics ---
+1 packets transmitted, 1 received, 0% packet loss, time 0ms
+rtt min/avg/max/mdev = 1.670/1.670/1.670/0.000 ms
+
+Test 2: h2 to h3 (should fail - dropped at s1-eth2)
+Command: mininet> h2 ping -c 1 h3
+Result:
+PING 10.0.0.3 (10.0.0.3) 56(84) bytes of data.
+From 10.0.0.2 icmp_seq=1 Destination Host Unreachable
+
+--- 10.0.0.3 ping statistics ---
+1 packets transmitted, 0 received, +1 errors, 100% packet loss, time 0ms
+
